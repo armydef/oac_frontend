@@ -420,15 +420,76 @@ if (!shadow.querySelector('#oac-final-layout')) {
         flex: 1 1 auto !important;
     }
 
-    /* 🔥 SPUNTA NON PIÙ ASSOLUTA */
-    .property-instance.valid::before {
-        position: static !important;
-        margin-right: 6px !important;
-    }
+/* 🔥 Disattiva spunta originale */
+.property-instance.valid::before {
+    content: none !important;
+}
+
+/* 🔥 Crea spunta a fine label */
+.property-instance.valid > label::after {
+    content: '';
+    display: inline-block;
+    width: 0.9em;
+    height: 0.9em;
+    margin-left: 6px;
+    vertical-align: middle;
+
+    background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1024 1024" fill="green" xmlns="http://www.w3.org/2000/svg"><path d="M866.133333 258.133333L362.666667 761.6l-204.8-204.8L98.133333 618.666667 362.666667 881.066667l563.2-563.2z"/></svg>');
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+
+
+
+
 
   `;
   shadow.appendChild(style);
 }
+
+
+function hideOnlyDuplicateRemoveButtons(shadowRoot) {
+  shadowRoot.querySelectorAll('.property-instance').forEach(pi => {
+
+    // consideriamo solo i wrapper "esterni" che contengono uno shacl-node
+    const shaclNode = pi.querySelector(':scope > shacl-node');
+    if (!shaclNode) return;
+
+    // remove wrapper diretto del wrapper esterno (quello che sospettiamo duplicato)
+    const directRemoveWrapper = pi.querySelector(':scope > .remove-button-wrapper');
+    if (!directRemoveWrapper) return;
+
+    const directRemoveBtn = directRemoveWrapper.querySelector('rokit-button.remove-button[title]');
+    if (!directRemoveBtn) return;
+
+    const title = directRemoveBtn.getAttribute('title');
+    if (!title) return;
+
+    // cerco un altro remove con lo stesso title *dentro* lo shacl-node
+    // (escludo quello esterno: infatti quello esterno NON è dentro shaclNode)
+    const duplicateInside = shaclNode.querySelector(`rokit-button.remove-button[title="${CSS.escape(title)}"]`);
+
+    // se esiste, quello esterno è duplicato => nascondo SOLO quello esterno
+    if (duplicateInside) {
+      directRemoveWrapper.style.display = 'none';
+    } else {
+      // se non c'è duplicato interno, quello esterno serve => lo lascio visibile
+      directRemoveWrapper.style.display = '';
+    }
+  });
+}
+
+// prima applicazione
+hideOnlyDuplicateRemoveButtons(shadow);
+
+// observer per elementi aggiunti con "+"
+const dupRemoveObserver = new MutationObserver(() => {
+  hideOnlyDuplicateRemoveButtons(shadow);
+});
+dupRemoveObserver.observe(shadow, { childList: true, subtree: true });
+
+
 
 if (!shadow.querySelector('#oac-fix-add-buttons')) {
   const style = document.createElement('style');
